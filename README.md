@@ -21,14 +21,21 @@ Configuração do Projeto
 
 Clone o repositório:
 
-git clone https://github.com/Lads-iesgo/webapp-farmacia.git
-cd webapp-farmacia
+git clone (https://github.com/VITORHUGORDM/webapp-farmacia_att.git)
+
+cd webapp-farmacia_att
 
 Instale as dependências:
 
 npm install # ou yarn install
 
-Inicie o servidor de desenvolvimento:
+# Instala o Vite como dependência de desenvolvimento
+npm install --save-dev vite
+
+# Instala o plugin React para Vite
+npm install --save-dev @vitejs/plugin-react
+
+#Inicie o servidor de desenvolvimento:
 
 npm run dev
 

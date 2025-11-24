@@ -155,11 +155,7 @@ export default function PaginaMedicamento() {
                           Mg/Ml: {med.mg_ml || med.Mg_Ml || ""}
                         </div>
                         <div className="italic">
-                          Princípio ativo:{" "}
-                          {med.principio_ativo ||
-                            med.Principio_Ativo ||
-                            med.principioAtivo ||
-                            ""}
+                          Frequência: {med.frequencia || med.Frequencia || ""}
                         </div>
                         <div className="italic">
                           Alertas: {med.alertas || med.Alertas || ""}
@@ -242,10 +238,9 @@ export default function PaginaMedicamento() {
                       medicamentoToDelete.mg_ml ||
                       medicamentoToDelete.Mg_Ml ||
                       "",
-                    principio_ativo:
-                      medicamentoToDelete.principio_ativo ||
-                      medicamentoToDelete.Principio_Ativo ||
-                      medicamentoToDelete.principioAtivo ||
+                    frequencia:
+                      medicamentoToDelete.frequencia ||
+                      medicamentoToDelete.Frequencia ||
                       "",
                     alertas:
                       medicamentoToDelete.alertas ||

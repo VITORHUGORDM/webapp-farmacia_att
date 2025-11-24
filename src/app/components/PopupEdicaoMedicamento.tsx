@@ -29,7 +29,7 @@ export default function PopupEdicaoMedicamento({
     via_consumo: "",
     mg_ml: "",
     alertas: "",
-    principio_ativo: "",
+    frequencia: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -52,11 +52,7 @@ export default function PopupEdicaoMedicamento({
           "",
         mg_ml: medicamento.mg_ml || medicamento.Mg_Ml || "",
         alertas: medicamento.alertas || medicamento.Alertas || "",
-        principio_ativo:
-          medicamento.principio_ativo ||
-          medicamento.Principio_Ativo ||
-          medicamento.principioAtivo ||
-          "",
+        frequencia: medicamento.frequencia || medicamento.Frequencia || "",
       });
     }
   }, [medicamento]);
@@ -100,26 +96,27 @@ export default function PopupEdicaoMedicamento({
       dadosMedicamento.tarja = dadosMedicamento.tarja || "";
       dadosMedicamento.via_consumo = dadosMedicamento.via_consumo || "";
 
-      dadosMedicamento.principio_ativo = (
-        dadosMedicamento.principio_ativo || ""
+      dadosMedicamento.frequencia = (
+        dadosMedicamento.frequencia || ""
       ).toUpperCase();
 
       // Mapeia para o formato esperado pelo backend (PascalCase/SnakeCase)
       const payload = {
+        ...dadosMedicamento,
         Nome_Medicamento: dadosMedicamento.nome,
         Dosagem: dadosMedicamento.dosagem,
         Tipo: dadosMedicamento.tipo,
         Tarja: dadosMedicamento.tarja,
         Via_Consumo: dadosMedicamento.via_consumo,
+        Via_consumo: dadosMedicamento.via_consumo,
         Mg_Ml: dadosMedicamento.mg_ml,
         Alertas: dadosMedicamento.alertas,
-        Principio_Ativo: dadosMedicamento.principio_ativo,
+        Principio_Ativo: dadosMedicamento.frequencia,
+        principio_ativo: dadosMedicamento.frequencia,
+        Frequencia: dadosMedicamento.frequencia,
       };
 
-      const response = await api.put(
-        `/medicamento/${medicamento.ID}`,
-        dadosMedicamento
-      );
+      const response = await api.put(`/medicamento/${medicamento.ID}`, payload);
 
       // Atualiza a lista na página principal
       onAtualizar({
@@ -134,7 +131,7 @@ export default function PopupEdicaoMedicamento({
         via_consumo: dadosMedicamento.via_consumo,
         mg_ml: dadosMedicamento.mg_ml,
         alertas: dadosMedicamento.alertas,
-        principio_ativo: dadosMedicamento.principio_ativo,
+        frequencia: dadosMedicamento.frequencia,
       });
 
       onClose();
@@ -299,15 +296,15 @@ export default function PopupEdicaoMedicamento({
               />
             </div>
 
-            {/* Princípio Ativo */}
+            {/* Frequência */}
             <div>
               <label className="block text-sm font-medium mb-1 text-black">
-                Princípio Ativo
+                Frequência
               </label>
               <input
                 type="text"
-                name="principio_ativo"
-                value={form.principio_ativo}
+                name="frequencia"
+                value={form.frequencia}
                 onChange={handleChange}
                 required
                 className="border border-gray-300 rounded-[10px] px-3 py-2 w-full text-black text-sm"

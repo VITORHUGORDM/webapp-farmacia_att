@@ -62,7 +62,7 @@ export interface Medicamento {
   Mg_Ml?: string;
   alertas?: string;
   Alertas?: string;
-  principio_ativo?: string;
-  Principio_Ativo?: string;
-  principioAtivo?: string;
+  frequencia?: string;
+  Frequencia?: string;
+  frequencia?: string;
 }

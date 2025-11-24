@@ -27,7 +27,7 @@ export default function ModalCadastroMedicamento({
     via_consumo: "",
     mg_ml: "",
     alertas: "",
-    principio_ativo: "",
+    frequencia: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function ModalCadastroMedicamento({
     tarja: "",
     mg_ml: "",
     alertas: "",
-    principio_ativo: "",
+    frequencia: "",
   });
 
   // 🔥 CARREGA OS DADOS QUANDO EDITANDO
@@ -59,8 +59,7 @@ export default function ModalCadastroMedicamento({
           via_consumo: res.data.via_consumo || res.data.Via_Consumo || "",
           mg_ml: res.data.mg_ml || res.data.Mg_Ml || "",
           alertas: res.data.alertas || res.data.Alertas || "",
-          principio_ativo:
-            res.data.principio_ativo || res.data.Principio_Ativo || "",
+          frequencia: res.data.frequencia || res.data.Frequencia || "",
         });
       });
     } else {
@@ -73,7 +72,7 @@ export default function ModalCadastroMedicamento({
         via_consumo: "",
         mg_ml: "",
         alertas: "",
-        principio_ativo: "",
+        frequencia: "",
       });
     }
   }, [id, isOpen]);
@@ -114,28 +113,32 @@ export default function ModalCadastroMedicamento({
       dadosMedicamento.tipo = dadosMedicamento.tipo || "";
       dadosMedicamento.tarja = dadosMedicamento.tarja || "";
       dadosMedicamento.via_consumo = dadosMedicamento.via_consumo || "";
-      dadosMedicamento.principio_ativo = (
-        dadosMedicamento.principio_ativo || ""
+      dadosMedicamento.frequencia = (
+        dadosMedicamento.frequencia || ""
       ).toUpperCase();
 
       // Payload para o backend (PascalCase)
       const payload = {
+        ...dadosMedicamento,
         Nome_Medicamento: dadosMedicamento.nome,
         Dosagem: dadosMedicamento.dosagem,
         Tipo: dadosMedicamento.tipo,
         Tarja: dadosMedicamento.tarja,
         Via_Consumo: dadosMedicamento.via_consumo,
+        Via_consumo: dadosMedicamento.via_consumo,
         Mg_Ml: dadosMedicamento.mg_ml,
         Alertas: dadosMedicamento.alertas,
-        Principio_Ativo: dadosMedicamento.principio_ativo,
+        Principio_Ativo: dadosMedicamento.frequencia,
+        principio_ativo: dadosMedicamento.frequencia,
+        Frequencia: dadosMedicamento.frequencia,
       };
 
       if (id) {
         //  EDITAR
-        await api.put(`/medicamento/${id}`, dadosMedicamento);
+        await api.put(`/medicamento/${id}`, payload);
       } else {
         //  CADASTRAR
-        await api.post("/medicamento", dadosMedicamento);
+        await api.post("/medicamento", payload);
       }
 
       setSuccessData({ ...dadosMedicamento });
@@ -151,7 +154,7 @@ export default function ModalCadastroMedicamento({
           via_consumo: "",
           mg_ml: "",
           alertas: "",
-          principio_ativo: "",
+          frequencia: "",
         });
       }
     } catch (error) {
@@ -333,15 +336,15 @@ export default function ModalCadastroMedicamento({
                 />
               </div>
 
-              {/* Princípio Ativo */}
+              {/* Frequência */}
               <div>
                 <label className="block text-sm font-medium mb-1 text-black">
-                  Princípio Ativo
+                  Frequência
                 </label>
                 <input
                   type="text"
-                  name="principio_ativo"
-                  value={form.principio_ativo}
+                  name="frequencia"
+                  value={form.frequencia}
                   onChange={handleChange}
                   required
                   className="border border-gray-300 rounded-[10px] px-3 py-2 w-full text-black text-sm"

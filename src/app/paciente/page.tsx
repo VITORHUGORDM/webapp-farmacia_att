@@ -20,6 +20,8 @@ export default function PaginaPaciente() {
   // Modais
   const [isCadastroOpen, setIsCadastroOpen] = useState(false);
   const [editingPaciente, setEditingPaciente] = useState<Paciente | null>(null);
+  const [isDeletePopupOpen, setIsDeletePopupOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Paciente | null>(null);
 
   useEffect(() => {
     fetchPacientes();
@@ -37,12 +39,18 @@ export default function PaginaPaciente() {
     }
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("Deseja realmente excluir este paciente?")) return;
+  function handleDelete(paciente: Paciente) {
+    setPatientToDelete(paciente);
+    setIsDeletePopupOpen(true);
+  }
 
+  async function confirmDelete() {
+    if (!patientToDelete) return;
     try {
-      await pacienteService.deletar(id);
-      setPacientes((prev) => prev.filter((p) => p.id !== id));
+      await pacienteService.deletar(patientToDelete.id);
+      setPacientes((prev) => prev.filter((p) => p.id !== patientToDelete.id));
+      setIsDeletePopupOpen(false);
+      setPatientToDelete(null);
     } catch (err) {
       console.error("Erro ao excluir paciente:", err);
       alert("Erro ao excluir paciente.");
@@ -131,7 +139,7 @@ export default function PaginaPaciente() {
                         <PencilSquareIcon className="h-8 w-8 stroke-2" />
                       </button>
                       <button
-                        onClick={() => handleDelete(paciente.id)}
+                        onClick={() => handleDelete(paciente)}
                         className="text-black hover:text-gray-800"
                       >
                         <TrashIcon className="h-8 w-8 stroke-2" />
@@ -176,6 +184,46 @@ export default function PaginaPaciente() {
               );
             }}
           />
+
+          {/* Modal de Exclusão */}
+          {isDeletePopupOpen && patientToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
+              <div className="bg-white rounded-[20px] shadow-lg w-[500px] overflow-hidden flex flex-col">
+                <div className="bg-blue-900 py-6 text-center">
+                  <h2 className="text-white font-black text-xl uppercase">
+                    DESEJA EXCLUIR PACIENTE?
+                  </h2>
+                </div>
+                <div className="p-8 flex flex-col gap-2 text-black text-lg font-medium">
+                  <div>
+                    <span className="font-bold">Nome:</span>{" "}
+                    {patientToDelete.nome_completo.split(" ")[0]}
+                  </div>
+                  <div>
+                    <span className="font-bold">Sobrenome:</span>{" "}
+                    {patientToDelete.nome_completo
+                      .split(" ")
+                      .slice(1)
+                      .join(" ")}
+                  </div>
+                </div>
+                <div className="p-6 flex justify-center gap-8">
+                  <button
+                    onClick={() => setIsDeletePopupOpen(false)}
+                    className="bg-red-600 text-white font-bold py-2 px-8 rounded-full hover:bg-red-700 text-lg"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="bg-green-700 text-white font-bold py-2 px-8 rounded-full hover:bg-green-800 text-lg"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

@@ -20,6 +20,9 @@ type TratamentoFront = {
   pacienteId: number;
   pacienteNome: string;
   Diagnostico: string;
+  Condicao?: string;
+  Farmaceutico?: string;
+  Frequencia?: string;
   Data_inicio?: string;
   Data_termino?: string;
   Status: string;
@@ -42,6 +45,9 @@ export default function PaginaTratamento() {
   const [selectedMedicamentos, setSelectedMedicamentos] = useState<number[]>(
     []
   );
+  const [selectedFrequencies, setSelectedFrequencies] = useState<{
+    [key: number]: string;
+  }>({});
   const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
   const [successPopupData, setSuccessPopupData] = useState<Medicamento | null>(
     null
@@ -54,24 +60,28 @@ export default function PaginaTratamento() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTratamento, setEditingTratamento] =
     useState<TratamentoFront | null>(null);
-
   const [form, setForm] = useState({
     pacienteId: "",
     Diagnostico: "",
+    Condicao: "",
+    Farmaceutico: "",
     Data_inicio: "",
     Data_termino: "",
     Status: "Nao_iniciado",
     Observacoes: "",
+    Frequencia: "",
   });
 
   const [pacientes, setPacientes] = useState<
     { id: number; nome_completo: string }[]
   >([]);
+  const [farmaceuticos, setFarmaceuticos] = useState<any[]>([]);
 
   useEffect(() => {
     fetchTratamentos();
     fetchPacientes();
     fetchMedicamentos();
+    fetchFarmaceuticos();
   }, []);
 
   async function fetchTratamentos() {
@@ -79,26 +89,53 @@ export default function PaginaTratamento() {
     try {
       const res = await api.get("/tratamento");
       setTratamentos(
-        res.data.map((t: any) => ({
-          id: t.ID ?? t.id,
-          pacienteId:
-            t.paciente?.ID ??
-            t.paciente?.id ??
-            t.pacienteId ??
-            t.paciente_id ??
-            0,
-          pacienteNome:
-            t.paciente?.Nome_paciente ??
-            t.paciente?.nome_completo ??
-            t.paciente?.nome ??
-            t.pacienteNome ??
-            "Desconhecido",
-          Diagnostico: t.Diagnostico ?? t.diagnostico,
-          Data_inicio: t.Data_inicio ?? t.data_inicio,
-          Data_termino: t.Data_termino ?? t.data_termino,
-          Status: t.Status ?? t.status,
-          Observacoes: t.Observacoes ?? t.observacoes,
-        }))
+        res.data.map((t: any) => {
+          let obsData = {
+            condicao: "",
+            farmaceutico: "",
+            alertas: "",
+            frequencia: "",
+          };
+          const rawObs = t.Observacoes ?? t.observacoes;
+          try {
+            const parsed =
+              typeof rawObs === "string" ? JSON.parse(rawObs) : rawObs;
+            if (typeof parsed === "object" && parsed !== null) {
+              obsData.condicao = parsed.condicao || "";
+              obsData.farmaceutico = parsed.farmaceutico || "";
+              obsData.alertas = parsed.alertas || "";
+              obsData.frequencia = parsed.frequencia || "";
+            } else {
+              obsData.alertas = String(rawObs || "");
+            }
+          } catch (e) {
+            obsData.alertas = String(rawObs || "");
+          }
+
+          return {
+            id: t.ID ?? t.id,
+            pacienteId:
+              t.paciente?.ID ??
+              t.paciente?.id ??
+              t.pacienteId ??
+              t.paciente_id ??
+              0,
+            pacienteNome:
+              t.paciente?.Nome_paciente ??
+              t.paciente?.nome_completo ??
+              t.paciente?.nome ??
+              t.pacienteNome ??
+              "Desconhecido",
+            Diagnostico: t.Diagnostico ?? t.diagnostico,
+            Condicao: obsData.condicao,
+            Farmaceutico: obsData.farmaceutico,
+            Frequencia: obsData.frequencia,
+            Data_inicio: t.Data_inicio ?? t.data_inicio,
+            Data_termino: t.Data_termino ?? t.data_termino,
+            Status: t.Status ?? t.status,
+            Observacoes: obsData.alertas,
+          };
+        })
       );
     } catch (err) {
       console.error("Erro ao buscar tratamentos:", err);
@@ -131,23 +168,35 @@ export default function PaginaTratamento() {
     }
   }
 
+  async function fetchFarmaceuticos() {
+    try {
+      const res = await api.get("/farmaceutico");
+      setFarmaceuticos(res.data);
+    } catch (err) {
+      console.error("Erro ao buscar farmacêuticos:", err);
+    }
+  }
+
   function openEditModal(tratamento: TratamentoFront) {
     setEditingTratamento(tratamento);
     setForm({
       pacienteId: tratamento.pacienteId.toString(),
       Diagnostico: tratamento.Diagnostico,
+      Condicao: tratamento.Condicao || "",
+      Farmaceutico: tratamento.Farmaceutico || "",
       Data_inicio: tratamento.Data_inicio?.split("T")[0] || "",
       Data_termino: tratamento.Data_termino?.split("T")[0] || "",
       Status: tratamento.Status,
       Observacoes: tratamento.Observacoes || "",
+      Frequencia: tratamento.Frequencia || "",
     });
     setIsEditModalOpen(true);
   }
-
   function openNewTreatmentFlow() {
     setIsPatientSelectionOpen(true);
     setSelectedPatient(null);
     setSelectedMedicamentos([]);
+    setSelectedFrequencies({});
   }
 
   function handlePatientSelect(patient: { id: number; nome_completo: string }) {
@@ -173,13 +222,22 @@ export default function PaginaTratamento() {
       for (const medId of selectedMedicamentos) {
         const med = medicamentos.find((m) => (m.ID || m.id) === medId);
         if (med) lastMed = med;
+
+        const observacoesJson = JSON.stringify({
+          condicao: "",
+          farmaceutico: "",
+          alertas: `Medicamento ID: ${medId}`,
+          frequencia: selectedFrequencies[medId] || "",
+        });
+
         const payload = {
           pacienteId: selectedPatient.id,
           paciente_id: selectedPatient.id,
           Diagnostico: med?.nome || med?.Nome_Medicamento || "Medicamento",
           Data_inicio: new Date().toISOString(),
           Status: "Ativo",
-          Observacoes: `Medicamento ID: ${medId}`,
+          Observacoes: observacoesJson,
+          observacoes: observacoesJson,
         };
         await api.post("/tratamento", payload);
       }
@@ -202,18 +260,41 @@ export default function PaginaTratamento() {
     if (!editingTratamento) return;
 
     try {
+      const observacoesJson = JSON.stringify({
+        condicao: form.Condicao,
+        farmaceutico: form.Farmaceutico,
+        alertas: form.Observacoes,
+        frequencia: form.Frequencia,
+      });
+
       const payload = {
         pacienteId: Number(form.pacienteId),
         paciente_id: Number(form.pacienteId),
         Diagnostico: form.Diagnostico,
+        diagnostico: form.Diagnostico,
         Data_inicio: form.Data_inicio
+          ? new Date(form.Data_inicio).toISOString()
+          : null,
+        data_inicio: form.Data_inicio
           ? new Date(form.Data_inicio).toISOString()
           : null,
         Data_termino: form.Data_termino
           ? new Date(form.Data_termino).toISOString()
           : null,
+        data_termino: form.Data_termino
+          ? new Date(form.Data_termino).toISOString()
+          : null,
         Status: form.Status,
-        Observacoes: form.Observacoes || undefined,
+        status: form.Status,
+        Observacoes: observacoesJson,
+        observacoes: observacoesJson,
+        // Envio redundante para garantir compatibilidade caso o backend tenha sido atualizado
+        Condicao: form.Condicao,
+        condicao: form.Condicao,
+        Farmaceutico: form.Farmaceutico,
+        farmaceutico: form.Farmaceutico,
+        Frequencia: form.Frequencia,
+        frequencia: form.Frequencia,
       };
 
       await api.put(`/tratamento/${editingTratamento.id}`, payload);
@@ -284,24 +365,29 @@ export default function PaginaTratamento() {
 
                     <div className="grid grid-cols-3 gap-8 flex-1 text-black">
                       <div className="flex flex-col">
-                        <span className="font-bold text-lg">
+                        <span className="font-bold text-lg italic">
                           {t.pacienteNome}
                         </span>
-                        <span className="italic text-sm">
-                          Medicamento: {t.Diagnostico}
+                        <span className="text-sm italic">{t.Diagnostico}</span>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="font-medium italic">
+                          {t.Condicao || "-"}
+                        </span>
+                        <span className="text-sm italic">
+                          {t.Farmaceutico || "-"}
+                        </span>
+                        <span className="text-sm italic">
+                          {t.Frequencia || "-"}
                         </span>
                       </div>
 
                       <div className="flex flex-col">
-                        <span className="font-medium">{t.Diagnostico}</span>
-                        <span className="italic text-sm">Farmacêutico: -</span>
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="font-medium">
+                        <span className="font-medium italic">
                           {formatDate(t.Data_inicio)}
                         </span>
-                        <span className="italic text-sm">
+                        <span className="text-sm italic">
                           {formatDate(t.Data_termino)}
                         </span>
                       </div>
@@ -425,7 +511,7 @@ export default function PaginaTratamento() {
                         </div>
                       </div>
 
-                      <div className="pr-4">
+                      <div className="pr-4 flex flex-col items-end gap-2">
                         <input
                           type="checkbox"
                           className="w-8 h-8 rounded border-gray-400 text-blue-900 focus:ring-blue-900"
@@ -436,6 +522,24 @@ export default function PaginaTratamento() {
                             toggleMedicamentoSelection(med.ID || med.id || 0)
                           }
                         />
+                        {selectedMedicamentos.includes(
+                          med.ID || med.id || 0
+                        ) && (
+                          <input
+                            type="text"
+                            placeholder="Frequência"
+                            className="border border-gray-300 rounded px-2 py-1 text-sm w-32 text-black"
+                            value={
+                              selectedFrequencies[med.ID || med.id || 0] || ""
+                            }
+                            onChange={(e) =>
+                              setSelectedFrequencies({
+                                ...selectedFrequencies,
+                                [med.ID || med.id || 0]: e.target.value,
+                              })
+                            }
+                          />
+                        )}
                       </div>
                     </div>
                   ))}
@@ -459,42 +563,33 @@ export default function PaginaTratamento() {
             </div>
           )}
 
-          {/* Modal de Edição (Antigo, mantido apenas para edição) */}
+          {/* Modal de Edição */}
           {isEditModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
               <div className="bg-white rounded-[20px] shadow-lg w-[500px] overflow-hidden">
-                <div className="bg-blue-900 h-12 w-full flex items-center justify-end px-4">
-                  <button
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="text-white hover:text-gray-200"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
+                <div className="bg-blue-900 h-12 w-full"></div>
 
                 <div className="p-8">
-                  <h2 className="text-2xl font-bold text-center mb-6 text-blue-900">
-                    Editar Tratamento
+                  <h2 className="text-2xl font-black text-center mb-6 text-blue-900 uppercase">
+                    EDITAR TRATAMENTO
                   </h2>
 
                   <form
                     onSubmit={handleSaveEdit}
                     className="flex flex-col gap-4"
                   >
-                    <label className="flex flex-col">
-                      <span className="text-blue-900 font-semibold mb-2">
-                        Paciente
-                      </span>
+                    {/* Paciente */}
+                    <div className="relative">
                       <select
                         required
                         value={form.pacienteId}
                         onChange={(e) =>
                           setForm({ ...form, pacienteId: e.target.value })
                         }
-                        className="border border-gray-300 rounded px-3 py-2"
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black appearance-none bg-white italic"
                       >
                         <option value="" disabled>
-                          Selecione o paciente
+                          Paciente:
                         </option>
                         {pacientes.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -502,90 +597,118 @@ export default function PaginaTratamento() {
                           </option>
                         ))}
                       </select>
-                    </label>
+                      {/* Hack para mostrar o label como placeholder se não tiver valor selecionado, ou label fixo? 
+                          A imagem mostra "Paciente:" dentro do input. Vou usar um label flutuante ou placeholder simulado.
+                          Como é um select, o option disabled serve como placeholder.
+                      */}
+                    </div>
 
-                    <label className="flex flex-col">
-                      <span className="text-blue-900 font-semibold mb-2">
-                        Diagnóstico
-                      </span>
+                    {/* Medicamento (Mapeado para Diagnostico no backend atual) */}
+                    <div className="relative">
                       <input
                         required
+                        placeholder="Medicamento:"
                         value={form.Diagnostico}
                         onChange={(e) =>
                           setForm({ ...form, Diagnostico: e.target.value })
                         }
-                        className="border border-gray-300 rounded px-3 py-2"
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black italic placeholder-gray-500"
                       />
-                    </label>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <label className="flex flex-col">
-                        <span className="text-blue-900 font-semibold mb-2">
-                          Data início
-                        </span>
-                        <input
-                          required
-                          type="date"
-                          value={form.Data_inicio}
-                          onChange={(e) =>
-                            setForm({ ...form, Data_inicio: e.target.value })
-                          }
-                          className="border border-gray-300 rounded px-3 py-2"
-                        />
-                      </label>
-
-                      <label className="flex flex-col">
-                        <span className="text-blue-900 font-semibold mb-2">
-                          Data término
-                        </span>
-                        <input
-                          type="date"
-                          value={form.Data_termino}
-                          onChange={(e) =>
-                            setForm({ ...form, Data_termino: e.target.value })
-                          }
-                          className="border border-gray-300 rounded px-3 py-2"
-                        />
-                      </label>
                     </div>
 
-                    <label className="flex flex-col">
-                      <span className="text-blue-900 font-semibold mb-2">
-                        Status
-                      </span>
-                      <select
-                        value={form.Status}
+                    {/* Diagnóstico */}
+                    <div className="relative">
+                      <input
+                        placeholder="Diagnóstico:"
+                        value={form.Condicao}
                         onChange={(e) =>
-                          setForm({ ...form, Status: e.target.value })
+                          setForm({ ...form, Condicao: e.target.value })
                         }
-                        className="border border-gray-300 rounded px-3 py-2"
-                      >
-                        <option value="Nao_iniciado">Não iniciado</option>
-                        <option value="Ativo">Ativo</option>
-                        <option value="Pausado">Pausado</option>
-                        <option value="Cancelado">Cancelado</option>
-                        <option value="Concluido">Concluído</option>
-                      </select>
-                    </label>
-
-                    <label className="flex flex-col">
-                      <span className="text-blue-900 font-semibold mb-2">
-                        Observações
-                      </span>
-                      <textarea
-                        value={form.Observacoes}
-                        onChange={(e) =>
-                          setForm({ ...form, Observacoes: e.target.value })
-                        }
-                        className="border border-gray-300 rounded px-3 py-2"
-                        rows={3}
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black italic placeholder-gray-500"
                       />
-                    </label>
+                    </div>
 
-                    <div className="flex justify-center mt-6">
+                    {/* Farmacêutico */}
+                    <div className="relative">
+                      <select
+                        value={form.Farmaceutico}
+                        onChange={(e) =>
+                          setForm({ ...form, Farmaceutico: e.target.value })
+                        }
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black appearance-none bg-white italic"
+                      >
+                        <option value="" disabled>
+                          Farmacêutico:
+                        </option>
+                        {farmaceuticos.map((f) => (
+                          <option
+                            key={f.ID || f.id}
+                            value={f.Nome_Farmaceutico || f.nome_completo}
+                          >
+                            {f.Nome_Farmaceutico || f.nome_completo}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Frequência */}
+                    <div className="relative">
+                      <input
+                        placeholder="Frequência:"
+                        value={form.Frequencia}
+                        onChange={(e) =>
+                          setForm({ ...form, Frequencia: e.target.value })
+                        }
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black italic placeholder-gray-500"
+                      />
+                    </div>
+
+                    {/* Início de tratamento */}
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        placeholder="Início de tratamento"
+                        onFocus={(e) => (e.target.type = "date")}
+                        onBlur={(e) => {
+                          if (!e.target.value) e.target.type = "text";
+                        }}
+                        value={form.Data_inicio}
+                        onChange={(e) =>
+                          setForm({ ...form, Data_inicio: e.target.value })
+                        }
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black italic placeholder-gray-500"
+                      />
+                    </div>
+
+                    {/* Fim de tratamento */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Fim de tratamento:"
+                        onFocus={(e) => (e.target.type = "date")}
+                        onBlur={(e) => {
+                          if (!e.target.value) e.target.type = "text";
+                        }}
+                        value={form.Data_termino}
+                        onChange={(e) =>
+                          setForm({ ...form, Data_termino: e.target.value })
+                        }
+                        className="border border-gray-300 rounded-[10px] px-3 py-3 w-full text-black italic placeholder-gray-500"
+                      />
+                    </div>
+
+                    <div className="flex justify-between mt-6 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditModalOpen(false)}
+                        className="bg-[#D9D9D9] text-black font-bold py-3 px-12 rounded-[15px] hover:bg-gray-300 text-xl flex-1"
+                      >
+                        Cancelar
+                      </button>
                       <button
                         type="submit"
-                        className="bg-blue-900 text-white font-bold py-3 px-12 rounded-full hover:bg-blue-800"
+                        className="bg-blue-900 text-white font-bold py-3 px-12 rounded-[15px] hover:bg-blue-800 text-xl flex-1"
                       >
                         Salvar
                       </button>
@@ -621,7 +744,7 @@ export default function PaginaTratamento() {
                     {successPopupData.tipo || successPopupData.Tipo}
                   </div>
                   <div>
-                    <span className="font-bold">Via de consumo:</span>{" "}
+                    <span className="font-bold">Tratamento:</span>{" "}
                     {successPopupData.via_consumo ||
                       successPopupData.Via_Consumo}
                   </div>
